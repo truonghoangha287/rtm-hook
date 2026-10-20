@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "rtm": "specs/001-bank-payment-system/01-requirements/rtm.md",
+  "exclude": ["**/*-backup/**", "**/*.html", "**/worktrees/**", "**/target/**", "**/node_modules/**"],
+
+  "layers": [
+    {
+      "id": "br", "label": "BR", "prefixes": ["BR"],
+      "define": [{"files": ["specs/001-bank-payment-system/01-requirements/brd.md"], "how": "table"}],
+      "attrs": [{"name": "source", "file": "specs/001-bank-payment-system/01-requirements/rtm.md",
+                 "key_col": "BR", "value_col": "Source"}],
+      "require": [["@source"]], "severity": "P2"
+    },
+    {
+      "id": "req", "label": "FR/NFR", "prefixes": ["FR", "NFR"],
+      "define": [
+        {"files": ["specs/001-bank-payment-system/01-requirements/frd-srs.md"], "how": "heading"},
+        {"files": ["specs/001-bank-payment-system/01-requirements/nfr-spec.md"], "how": "table"}
+      ],
+      "attrs": [{"name": "source", "file": "specs/001-bank-payment-system/01-requirements/nfr-spec.md",
+                 "key_col": "ID", "value_col": "Source"}],
+      "upstream": ["br"], "require": [["br", "@source"]], "severity": "P1"
+    },
+    {
+      "id": "story", "label": "Story", "prefixes": ["STORY"],
+      "define": [{"files": ["specs/001-bank-payment-system/01a-product-backlog/user-stories-acceptance-criteria.md"], "how": "heading"}],
+      "upstream": ["req"], "require": [["req"]], "severity": "P1",
+      "children": {"id": "ac", "label": "AC", "suffix": "AC", "pattern": "^\\s*[-*]\\s*\\*\\*AC(\\d+)\\b"}
+    },
+    {
+      "id": "hld", "label": "HLD", "prefixes": ["CMP", "ADR", "INT", "SD"],
+      "define": [
+        {"files": ["specs/001-bank-payment-system/03-solution-architecture/c4-architecture-views.md",
+                   "specs/001-bank-payment-system/03-solution-architecture/integration-design.md",
+                   "specs/001-bank-payment-system/03-solution-architecture/architecture-decision-records.md"], "how": "table"},
+        {"files": ["specs/001-bank-payment-system/03-solution-architecture/architecture-decision-records.md",
+                   "specs/001-bank-payment-system/03-solution-architecture/sequence-diagrams.md"], "how": "heading"}
+      ],
+      "upstream": ["req", "hld"], "trace_via": ["req"],
+      "require": [["req", "hld"]], "severity": "P2"
+    },
+    {
+      "id": "lld", "label": "LLD", "prefixes": ["TASK"],
+      "define": [{"files": ["specs/001-bank-payment-system/06a-technical-design/technical-task-breakdown.md"], "how": "table"}],
+      "upstream": ["hld", "req"], "trace_via": ["req"],
+      "require": [["hld"], ["req"]], "severity": "P1"
+    },
+    {
+      "id": "code", "label": "Code", "kind": "files",
+      "files": ["payment-hub/src/main/**/*.java"],
+      "upstream": ["lld"], "require": [["lld"]], "severity": "P2",
+      "inherit_from": "package-info.java"
+    },
+    {
+      "id": "test", "label": "Test", "kind": "files",
+      "files": ["payment-hub/src/test/**/*.java"],
+      "upstream": ["ac", "br"], "require": [["ac", "br"]], "severity": "P1",
+      "ref_marker": "Verifies:"
+    }
+  ],
+
+  "coverage": [
+    {"from": "br", "to": "test", "severity": "P3"},
+    {"from": "ac", "to": "test", "severity": "P3"}
+  ],
+
+  "stop_block_severities": ["P0", "P1"],
+  "max_messages": 5,
+
+  "render": {
+    "stages": {"req": "Specified", "hld": "In Design", "lld": "Designed", "code": "Implemented", "test": "Tested"},
+    "max_list": 6,
+    "count_only": ["code"],
+    "blocks": [
+      {"id": "forward-br", "type": "forward", "root": "br", "columns": ["req", "hld", "lld", "code", "test"],
+       "title": "2. Forward traceability — BR → FR/NFR → HLD → LLD → Code → Test"},
+      {"id": "forward-nfr", "type": "forward", "root": "req", "prefix": "NFR", "columns": ["hld", "lld", "code", "test"],
+       "title": "3. Forward traceability — NFR → HLD → LLD → Code → Test"},
+      {"id": "justify-lld", "type": "justify", "layer": "lld",
+       "title": "5. LLD justification — every TASK cites HLD and a requirement"},
+      {"id": "ac-coverage", "type": "children", "parent": "story", "target": "test",
+       "title": "6. Acceptance-criteria → Test coverage"},
+      {"id": "backward", "type": "backward", "layer": "test", "up": ["br"],
+       "title": "7. Backward traceability (test → need)"},
+      {"id": "summary", "type": "summary", "title": "8. Coverage summary"}
+    ]
+  }
+}
