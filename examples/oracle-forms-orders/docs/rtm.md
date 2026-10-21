@@ -24,7 +24,7 @@
 
 ## Coverage summary
 
-<!-- rtm:begin summary sha=c6af216044 -->
+<!-- rtm:begin summary sha=ad6097da99 -->
 <!-- generated — edit the source artifacts, not this block -->
 | Check | Result |
 |---|---|
@@ -34,12 +34,12 @@
 | HLD with required upstream links | 3 / 3 |
 | LLD with required upstream links | 4 / 4 |
 | Code with required upstream links | 5 / 5 |
-| Test case with required upstream links | 4 / 4 |
+| Test case with required upstream links | 6 / 6 |
 | Test code with required upstream links | 3 / 3 |
 | Legacy source reaching ≥ 1 BR | 5 / 5 |
-| BR reaching ≥ 1 Test case | 3 / 4 |
-| Test case reaching ≥ 1 Test code | 4 / 4 |
-| Findings (P0 / P1 / P2 / P3) | 0 / 0 / 0 / 1 |
+| BR reaching ≥ 1 Test case | 4 / 4 |
+| Test case reaching ≥ 1 Test code | 4 / 6 |
+| Findings (P0 / P1 / P2 / P3) | 0 / 0 / 0 / 2 |
 
 Ask with `rtm.py why <ID>` / `rtm.py query …`; itemised findings: `rtm.py check`.
 <!-- rtm:end summary -->

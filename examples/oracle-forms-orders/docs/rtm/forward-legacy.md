@@ -3,7 +3,7 @@
 
 [← RTM index](../rtm.md)
 
-<!-- rtm:begin forward-legacy sha=ad317f5b5d -->
+<!-- rtm:begin forward-legacy sha=fdc2ce2a38 -->
 <!-- generated — edit the source artifacts, not this block -->
 | Legacy source | BR | LLD | Code | Test case | Test code | Status |
 |---|---|---|---|---|---|---|
@@ -11,7 +11,7 @@
 | FRM-002 | BR-003 | LLD-003 | 1 file | TC-004 | CreditCheckServiceTest | Tested |
 | PLS-001 | BR-002 | LLD-002 | 1 file | TC-002, TC-003 | DiscountCalculatorTest | Tested |
 | PLS-002 | BR-003 | LLD-003 | 1 file | TC-004 | CreditCheckServiceTest | Tested |
-| PLS-003 | BR-004 | LLD-004 | 1 file | — | — | Implemented |
+| PLS-003 | BR-004 | LLD-004 | 1 file | TC-005, TC-006 | — | Test case |
 
 Reached = furthest step with at least one linked item, stopping at the first gap.
 <!-- rtm:end forward-legacy -->
