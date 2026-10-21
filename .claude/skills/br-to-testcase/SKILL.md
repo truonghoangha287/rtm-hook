@@ -26,9 +26,4 @@ so the RTM hooks have something to sync and check.
    ```
    - TC IDs continue from the highest existing number
    - the ID goes in the first cell, the BR ID in the `Requirement` cell
-4. Finish with the gate (the hooks already do this in interactive sessions):
-   ```bash
-   python3 .claude/skills/rtm/scripts/rtm.py sync
-   python3 .claude/skills/rtm/scripts/rtm.py check --new --gate
-   ```
-   If the gate fails, fix the TC rows — never edit `rtm.md` or `rtm/`.
+   - write the rows with Write/Edit (not Bash), so the RTM hooks see the change
