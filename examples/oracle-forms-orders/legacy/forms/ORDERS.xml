@@ -1,0 +1,15 @@
+<!-- Oracle Forms 12c XML export (excerpt, mock) -->
+<Module name="ORDERS">
+  <Block name="ORDER_HDR" queryDataSourceName="ORDERS">
+    <Item name="CUSTOMER_ID" itemType="Text Item" required="true"/>
+    <Item name="ORDER_DATE" itemType="Text Item" initializeValue="$$DATE$$"/>
+  </Block>
+  <Block name="ORDER_LINES" queryDataSourceName="ORDER_LINES" recordsDisplayCount="10">
+    <Item name="PRODUCT_ID" itemType="Text Item" required="true"/>
+    <Item name="QTY" itemType="Text Item" dataType="Number"/>
+  </Block>
+  <Trigger name="KEY-COMMIT">
+    pkg_credit_check.assert_within_limit(:ORDER_HDR.CUSTOMER_ID, pkg_order_pricing.order_total(:ORDER_HDR.ORDER_ID));
+    commit_form;
+  </Trigger>
+</Module>

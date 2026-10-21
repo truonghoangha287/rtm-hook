@@ -1,0 +1,7 @@
+<!-- Oracle Forms 12c XML export (excerpt, mock) -->
+<Module name="CUSTOMERS">
+  <Block name="CUSTOMER" queryDataSourceName="CUSTOMERS" updateAllowed="false">
+    <Item name="CUSTOMER_ID" itemType="Text Item"/>
+    <Item name="CREDIT_LIMIT" itemType="Display Item" dataType="Number"/>
+  </Block>
+</Module>

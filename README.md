@@ -17,9 +17,10 @@ artifacts ──scan──► trace graph ──► views ──► rtm.md (inde
 |---|---|
 | `skills/rtm/scripts/rtm.py` | CLI: `why`, `query`, `sync`, `check`, `baseline`, `templates`, `init`, `flow show/check/apply`, `selftest`. Stdlib only, Python 3.10+ |
 | `skills/rtm/scripts/rtm_hook.py` | Claude Code hooks: Pre guards generated output · Post syncs on artifact or flow edits · Stop blocks only on *new* P0/P1 |
-| `skills/rtm/templates/` | `esdlc-waterfall`, `agile`, `minimal` |
+| `skills/rtm/templates/` | `esdlc-waterfall`, `agile`, `legacy-modernization`, `minimal` |
 | `skills/rtm/SKILL.md` | the `/rtm` skill: query first, the artifact contract, how to change a flow |
 | `examples/simple-payment/` | install command and generated preview for the SEPA Payment Hub |
+| `examples/oracle-forms-orders/` | mock Oracle Forms / PL/SQL → Spring Boot project on the `legacy-modernization` template |
 
 ## Install
 
