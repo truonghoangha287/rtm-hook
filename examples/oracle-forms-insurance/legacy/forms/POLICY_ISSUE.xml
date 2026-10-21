@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Oracle Forms 12c, converted with frmf2xml (mock). Module POLICY_ISSUE: motor quote and policy issue. -->
+<Module version="120000" xmlns="http://xmlns.oracle.com/Forms">
+  <FormModule Name="POLICY_ISSUE" Title="Motor Policy - Quote and Issue" FirstNavigationBlockName="POLICY_HDR">
+
+    <Block Name="POLICY_HDR" QueryDataSourceName="POLICIES" RecordsDisplayCount="1">
+      <Item Name="POLICY_NO" ItemType="Text Item" DataType="Char" MaximumLength="20" Enabled="false"/>
+      <Item Name="PRODUCT_CODE" ItemType="List Item" DataType="Char" Required="true" InitializeValue="MOT"/>
+      <Item Name="START_DATE" ItemType="Text Item" DataType="Date" Required="true" InitializeValue="$$DATE$$"/>
+      <Item Name="END_DATE" ItemType="Text Item" DataType="Date" Enabled="false"/>
+      <Item Name="STATUS" ItemType="Display Item" DataType="Char" InitializeValue="QUOTE"/>
+      <Item Name="PREMIUM" ItemType="Display Item" DataType="Number" FormatMask="999G999D99"/>
+      <Item Name="BTN_ISSUE" ItemType="Push Button" Label="Issue policy"/>
+
+      <Trigger Name="WHEN-VALIDATE-ITEM" ItemName="START_DATE" TriggerText="
+        IF :POLICY_HDR.START_DATE &lt; TRUNC(SYSDATE) THEN
+          MESSAGE('Cover cannot start in the past');
+          RAISE FORM_TRIGGER_FAILURE;
+        END IF;
+        :POLICY_HDR.END_DATE := ADD_MONTHS(:POLICY_HDR.START_DATE, 12) - 1;"/>
+
+      <Trigger Name="WHEN-BUTTON-PRESSED" ItemName="BTN_ISSUE" TriggerText="
+        :POLICY_HDR.PREMIUM := pkg_rating.calc_premium(:VEHICLE.VEHICLE_VALUE, :INSURED.DOB, :INSURED.NCD_YEARS);
+        IF pkg_underwriting.needs_referral(:VEHICLE.VEHICLE_VALUE, :INSURED.LICENCE_YEARS) THEN
+          :POLICY_HDR.STATUS := 'REFERRED';
+          MESSAGE('Referred to underwriter');
+        ELSE
+          :POLICY_HDR.STATUS := 'ISSUED';
+        END IF;
+        COMMIT_FORM;"/>
+
+      <Trigger Name="PRE-INSERT" TriggerText="
+        SELECT :POLICY_HDR.PRODUCT_CODE || '-' || TO_CHAR(SYSDATE, 'YYYY') || '-' || LPAD(policy_seq.NEXTVAL, 6, '0')
+          INTO :POLICY_HDR.POLICY_NO FROM dual;"/>
+    </Block>
+
+    <Block Name="INSURED" QueryDataSourceName="POLICY_HOLDERS" RecordsDisplayCount="1">
+      <Item Name="HOLDER_NAME" ItemType="Text Item" DataType="Char" Required="true"/>
+      <Item Name="DOB" ItemType="Text Item" DataType="Date" Required="true"/>
+      <Item Name="LICENCE_YEARS" ItemType="Text Item" DataType="Number" Required="true"/>
+      <Item Name="NCD_YEARS" ItemType="Text Item" DataType="Number" InitializeValue="0"/>
+
+      <Trigger Name="WHEN-VALIDATE-ITEM" ItemName="DOB" TriggerText="
+        IF MONTHS_BETWEEN(:POLICY_HDR.START_DATE, :INSURED.DOB) / 12 &lt; 18 THEN
+          MESSAGE('Policy holder must be at least 18 on the start date');
+          RAISE FORM_TRIGGER_FAILURE;
+        END IF;"/>
+    </Block>
+
+    <Block Name="VEHICLE" QueryDataSourceName="POLICY_VEHICLES" RecordsDisplayCount="1">
+      <Item Name="REG_NO" ItemType="Text Item" DataType="Char" Required="true"/>
+      <Item Name="MAKE_MODEL" ItemType="Text Item" DataType="Char"/>
+      <Item Name="VEHICLE_VALUE" ItemType="Text Item" DataType="Number" Required="true"/>
+    </Block>
+
+    <Block Name="COVERAGE" QueryDataSourceName="POLICY_COVERS" RecordsDisplayCount="5">
+      <Item Name="COVER_CODE" ItemType="List Item" DataType="Char" Required="true" LovName="LOV_COVERS"/>
+      <Item Name="DEDUCTIBLE" ItemType="Text Item" DataType="Number" InitializeValue="250"/>
+    </Block>
+
+    <LOV Name="LOV_COVERS" RecordGroupName="RG_COVERS" Title="Covers"/>
+    <RecordGroup Name="RG_COVERS" RecordGroupQuery="SELECT cover_code, description FROM covers WHERE active = 'Y'"/>
+  </FormModule>
+</Module>

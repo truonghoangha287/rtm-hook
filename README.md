@@ -21,6 +21,7 @@ artifacts ──scan──► trace graph ──► views ──► rtm.md (inde
 | `skills/rtm/SKILL.md` | the `/rtm` skill: query first, the artifact contract, how to change a flow |
 | `examples/simple-payment/` | install command and generated preview for the SEPA Payment Hub |
 | `examples/oracle-forms-orders/` | mock Oracle Forms / PL/SQL → Spring Boot project on the `legacy-modernization` template |
+| `examples/oracle-forms-insurance/` | same template, motor insurance: BRs recovered from mock policy and claims forms |
 
 ## Install
 

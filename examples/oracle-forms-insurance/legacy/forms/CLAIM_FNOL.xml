@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Oracle Forms 12c, converted with frmf2xml (mock). Module CLAIM_FNOL: first notice of loss. -->
+<Module version="120000" xmlns="http://xmlns.oracle.com/Forms">
+  <FormModule Name="CLAIM_FNOL" Title="Claims - First Notice of Loss" FirstNavigationBlockName="CLAIM">
+
+    <Block Name="CLAIM" QueryDataSourceName="CLAIMS" RecordsDisplayCount="1">
+      <Item Name="CLAIM_NO" ItemType="Display Item" DataType="Char"/>
+      <Item Name="POLICY_NO" ItemType="Text Item" DataType="Char" Required="true" LovName="LOV_POLICIES"/>
+      <Item Name="LOSS_DATE" ItemType="Text Item" DataType="Date" Required="true"/>
+      <Item Name="DESCRIPTION" ItemType="Text Item" DataType="Char" MaximumLength="2000"/>
+      <Item Name="EST_AMOUNT" ItemType="Text Item" DataType="Number" Required="true"/>
+      <Item Name="HANDLER_GROUP" ItemType="Display Item" DataType="Char"/>
+
+      <Trigger Name="WHEN-VALIDATE-ITEM" ItemName="LOSS_DATE" TriggerText="
+        DECLARE v_start DATE; v_end DATE; v_status VARCHAR2(10);
+        BEGIN
+          SELECT start_date, end_date, status INTO v_start, v_end, v_status
+            FROM policies WHERE policy_no = :CLAIM.POLICY_NO;
+          IF v_status &lt;&gt; 'ISSUED' OR :CLAIM.LOSS_DATE NOT BETWEEN v_start AND v_end THEN
+            MESSAGE('Loss date is outside an issued policy period');
+            RAISE FORM_TRIGGER_FAILURE;
+          END IF;
+        END;"/>
+
+      <Trigger Name="PRE-INSERT" TriggerText="
+        DECLARE v_dup NUMBER;
+        BEGIN
+          SELECT COUNT(*) INTO v_dup FROM claims
+           WHERE policy_no = :CLAIM.POLICY_NO AND loss_date = :CLAIM.LOSS_DATE;
+          IF v_dup &gt; 0 THEN
+            IF SHOW_ALERT('ALR_DUPLICATE') = ALERT_BUTTON2 THEN RAISE FORM_TRIGGER_FAILURE; END IF;
+          END IF;
+          :CLAIM.HANDLER_GROUP := CASE WHEN :CLAIM.EST_AMOUNT &gt; 10000 THEN 'SENIOR' ELSE 'STANDARD' END;
+          SELECT 'CLM-' || LPAD(claim_seq.NEXTVAL, 7, '0') INTO :CLAIM.CLAIM_NO FROM dual;
+        END;"/>
+    </Block>
+
+    <Alert Name="ALR_DUPLICATE" Title="Possible duplicate"
+           AlertMessage="A claim already exists for this policy and loss date. Save anyway?"
+           Button1Label="Save" Button2Label="Cancel"/>
+    <LOV Name="LOV_POLICIES" RecordGroupName="RG_POLICIES" Title="Policies"/>
+    <RecordGroup Name="RG_POLICIES" RecordGroupQuery="SELECT policy_no, holder_name FROM v_policy_lookup"/>
+  </FormModule>
+</Module>

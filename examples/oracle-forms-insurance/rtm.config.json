@@ -1,0 +1,225 @@
+{
+  "schema": 2,
+  "template": {
+    "name": "legacy-modernization",
+    "version": "1.0.0",
+    "description": "Oracle Form/PLSQL → BR; Fact/Constraint → HLD; BR + HLD → LLD → Code; BR → Test case → Test code"
+  },
+  "vars": {
+    "docs": "docs",
+    "src": "src/main/java",
+    "tests": "src/test/java"
+  },
+  "rtm": {
+    "index": "{docs}/rtm.md",
+    "dir": "{docs}/rtm",
+    "shard_size": 50,
+    "max_list": 6,
+    "count_only": [
+      "code"
+    ]
+  },
+  "exclude": [
+    "**/*-backup/**",
+    "**/*.html",
+    "**/worktrees/**",
+    "**/target/**",
+    "**/node_modules/**"
+  ],
+  "flow": [
+    {
+      "step": "legacy",
+      "label": "Legacy source",
+      "severity": "P2",
+      "produces": {
+        "ids": [
+          "FRM",
+          "PLS"
+        ],
+        "in": [
+          {
+            "files": [
+              "{docs}/00-legacy/legacy-inventory.md"
+            ],
+            "how": "table"
+          }
+        ]
+      }
+    },
+    {
+      "step": "fact",
+      "label": "Fact/Constraint",
+      "severity": "P2",
+      "produces": {
+        "ids": [
+          "FACT",
+          "CON"
+        ],
+        "in": [
+          {
+            "files": [
+              "{docs}/02-context/facts-constraints.md"
+            ],
+            "how": "table"
+          }
+        ]
+      }
+    },
+    {
+      "step": "br",
+      "label": "BR",
+      "severity": "P1",
+      "produces": {
+        "ids": [
+          "BR"
+        ],
+        "in": [
+          {
+            "files": [
+              "{docs}/01-requirements/brd.md"
+            ],
+            "how": "table"
+          }
+        ]
+      },
+      "consumes": {
+        "steps": [
+          "legacy"
+        ]
+      }
+    },
+    {
+      "step": "hld",
+      "label": "HLD",
+      "severity": "P2",
+      "produces": {
+        "ids": [
+          "CMP",
+          "ADR"
+        ],
+        "in": [
+          {
+            "files": [
+              "{docs}/03-hld/hld.md"
+            ],
+            "how": "table"
+          }
+        ]
+      },
+      "consumes": {
+        "steps": [
+          "fact"
+        ]
+      }
+    },
+    {
+      "step": "lld",
+      "label": "LLD",
+      "severity": "P1",
+      "produces": {
+        "ids": [
+          "LLD"
+        ],
+        "in": [
+          {
+            "files": [
+              "{docs}/04-lld/lld.md"
+            ],
+            "how": "table"
+          }
+        ]
+      },
+      "consumes": {
+        "steps": [
+          "br",
+          "hld"
+        ],
+        "rule": "all"
+      }
+    },
+    {
+      "step": "code",
+      "label": "Code",
+      "severity": "P2",
+      "produces": {
+        "files": [
+          "{src}/**/*.java"
+        ]
+      },
+      "consumes": {
+        "steps": [
+          "lld"
+        ]
+      }
+    },
+    {
+      "step": "tc",
+      "label": "Test case",
+      "severity": "P1",
+      "produces": {
+        "ids": [
+          "TC"
+        ],
+        "in": [
+          {
+            "files": [
+              "{docs}/05-test/test-cases.md"
+            ],
+            "how": "table"
+          }
+        ]
+      },
+      "consumes": {
+        "steps": [
+          "br"
+        ]
+      }
+    },
+    {
+      "step": "test",
+      "label": "Test code",
+      "severity": "P1",
+      "produces": {
+        "files": [
+          "{tests}/**/*.java"
+        ]
+      },
+      "consumes": {
+        "steps": [
+          "tc"
+        ],
+        "marker": "Verifies:"
+      }
+    }
+  ],
+  "coverage": [
+    {
+      "from": "legacy",
+      "to": "br",
+      "severity": "P3"
+    },
+    {
+      "from": "br",
+      "to": "tc",
+      "severity": "P3"
+    },
+    {
+      "from": "tc",
+      "to": "test",
+      "severity": "P3"
+    }
+  ],
+  "status": {
+    "initial": "Open",
+    "br": "Analysed",
+    "lld": "Designed",
+    "code": "Implemented",
+    "test": "Tested"
+  },
+  "views": "auto",
+  "stop_block_severities": [
+    "P0",
+    "P1"
+  ],
+  "max_messages": 5
+}
