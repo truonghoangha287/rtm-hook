@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Install the rtm skill + hooks into a repo.
 #   ./install.sh <repo> [--template NAME --set VAR=VALUE ... [--title T]] [--config FILE] [--yes] [--dry-run]
-# - symlinks <repo>/.claude/skills/rtm -> this kit's skills/rtm
+# - copies this kit's skills/rtm to <repo>/.claude/skills/rtm (re-run to update; replaces an old symlink)
 # - if the repo has no rtm.config.json: `rtm.py init --template ...` (or copies --config)
 # - merges 3 hook entries into <repo>/.claude/settings.json (shows the diff, asks first)
 # - adds .rtm state files to <repo>/.gitignore
@@ -27,10 +27,12 @@ REPO="$(cd "$REPO" && pwd)"
 
 run() { if [[ $DRY == 1 ]]; then echo "[dry-run] $*"; else "$@"; fi; }
 
-# 1. skill symlink
-run mkdir -p "$REPO/.claude/skills"
-run ln -sfn "$KIT/skills/rtm" "$REPO/.claude/skills/rtm"
-echo "skill: $REPO/.claude/skills/rtm -> $KIT/skills/rtm"
+# 1. skill copy (drop an old symlink first, or rsync would write through it into the kit)
+DEST="$REPO/.claude/skills/rtm"
+if [[ -L "$DEST" ]]; then run rm "$DEST"; fi
+run mkdir -p "$DEST"
+run rsync -a --delete --exclude '__pycache__/' --exclude '*.pyc' "$KIT/skills/rtm/" "$DEST/"
+echo "skill: copied $KIT/skills/rtm -> $DEST"
 
 # 2. config
 if [[ -f "$REPO/rtm.config.json" ]]; then

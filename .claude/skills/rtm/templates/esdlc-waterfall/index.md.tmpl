@@ -1,0 +1,24 @@
+# Requirements Traceability Matrix (RTM) — {title}
+
+| Field | Value |
+|---|---|
+| Document | Requirements Traceability Matrix (bidirectional) |
+| Owner | Business Analyst — hand sections; generated sections by `rtm sync` |
+| Status | Draft (living document) |
+| Traces | Source → BR → FR/NFR → Story/AC → HLD → LLD → Code → Test |
+| Flow | `rtm.config.json` (template `esdlc-waterfall`) — run `rtm.py flow show` |
+
+> Generated sections live between `<!-- rtm:begin … -->` markers here and in the files listed under
+> *Matrix sections*. Don't edit them — change the source artifact; hooks re-sync automatically.
+> Ask questions with `rtm.py why <ID>` / `rtm.py query …` instead of reading the matrix.
+
+## 1. Source → Business Requirement (hand-maintained)
+
+| BR | Source | Priority | Note |
+|---|---|---|---|
+| BR-001 | <regulation / business case / stakeholder> | MUST | |
+
+## 2. Regulatory traceability (hand-maintained)
+
+| Driver | Applicability | Requirements | Status |
+|---|---|---|---|
