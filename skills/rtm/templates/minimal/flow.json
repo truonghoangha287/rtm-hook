@@ -1,0 +1,29 @@
+{
+  "schema": 2,
+  "template": {"name": "minimal", "version": "1.0.0",
+               "description": "Requirement → Code → Test (Verifies: REQ-x); single-file matrix"},
+  "vars": {
+    "req_file": "<requirements file, e.g. docs/requirements.md>",
+    "src": "<source dir, e.g. src>",
+    "tests": "<tests dir, e.g. tests>",
+    "rtm_index": "<RTM index file, e.g. docs/rtm.md>"
+  },
+  "rtm": {"index": "{rtm_index}", "max_list": 6, "count_only": ["code"]},
+  "exclude": ["**/node_modules/**", "**/build/**", "**/dist/**", "**/target/**"],
+
+  "flow": [
+    {"step": "req", "label": "Requirement", "severity": "P2",
+     "produces": {"ids": ["REQ"], "in": [{"files": ["{req_file}"], "how": "table"}]}},
+
+    {"step": "code", "label": "Code", "severity": "P3",
+     "produces": {"files": ["{src}/**/*"]},
+     "consumes": {"steps": ["req"]}},
+
+    {"step": "test", "label": "Test", "severity": "P1",
+     "produces": {"files": ["{tests}/**/*"]},
+     "consumes": {"steps": ["req"], "marker": "Verifies:"}}
+  ],
+
+  "coverage": [{"from": "req", "to": "test", "severity": "P2"}],
+  "views": "auto"
+}

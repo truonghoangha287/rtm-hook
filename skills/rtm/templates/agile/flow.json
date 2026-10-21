@@ -1,0 +1,38 @@
+{
+  "schema": 2,
+  "template": {"name": "agile", "version": "1.0.0",
+               "description": "Epic → Story → AC → Code → Test (Verifies: STORY-x/ACn); split matrix"},
+  "vars": {
+    "docs": "<backlog docs dir, e.g. docs/backlog>",
+    "src": "<source dir, e.g. src>",
+    "tests": "<tests dir, e.g. tests>"
+  },
+  "rtm": {"index": "{docs}/rtm.md", "dir": "{docs}/rtm", "shard_size": 50, "max_list": 6, "count_only": ["code"]},
+  "exclude": ["**/node_modules/**", "**/build/**", "**/dist/**", "**/target/**"],
+
+  "flow": [
+    {"step": "epic", "label": "Epic", "severity": "P2",
+     "produces": {"ids": ["EPIC"], "in": [{"files": ["{docs}/epics.md"], "how": "table"}]},
+     "consumes": {"attrs": ["source"]},
+     "attrs": {"source": {"from": "{docs}/epics.md", "key_col": "ID", "value_col": "Goal"}}},
+
+    {"step": "story", "label": "Story", "severity": "P1",
+     "produces": {"ids": ["STORY"], "in": [{"files": ["{docs}/stories/*.md"], "how": "heading"}],
+                  "children": {"step": "ac", "label": "AC", "suffix": "AC",
+                               "pattern": "^\\s*[-*]\\s*\\*\\*AC(\\d+)\\b",
+                               "example": "- **AC{n}:** Given … when … then …"}},
+     "consumes": {"steps": ["epic"]}},
+
+    {"step": "code", "label": "Code", "severity": "P3",
+     "produces": {"files": ["{src}/**/*"]},
+     "consumes": {"steps": ["story"]}},
+
+    {"step": "test", "label": "Test", "severity": "P1",
+     "produces": {"files": ["{tests}/**/*"]},
+     "consumes": {"steps": ["ac"], "marker": "Verifies:"}}
+  ],
+
+  "coverage": [{"from": "ac", "to": "test", "severity": "P3"}],
+  "status": {"initial": "Backlog", "story": "Refined", "code": "In progress", "test": "Verified"},
+  "views": "auto"
+}

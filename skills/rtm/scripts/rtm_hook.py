@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Claude Code hook for the RTM.  Usage (settings.json):  rtm_hook.py pre|post|stop
 
-pre   PreToolUse  Write|Edit|MultiEdit  deny edits that touch a generated block of rtm.md
-post  PostToolUse Write|Edit|MultiEdit  doc layer -> sync + report new findings;
-                                        code/test -> mark dirty only; rtm.md -> check
+pre   PreToolUse  Write|Edit|MultiEdit  deny edits to generated section files, or to generated
+                                        blocks of the RTM index
+post  PostToolUse Write|Edit|MultiEdit  step artifact (doc) -> sync + report new findings;
+                                        code/test -> mark dirty only; index -> check;
+                                        rtm.config.json -> validate + re-sync (flow change)
 stop  Stop                              if anything is dirty: sync; block the stop on new
                                         P0/P1 findings introduced this session
 
@@ -54,10 +56,23 @@ def edit_spans(tool: str, ti: dict, current: str):
             i = current.find(old, i + 1)
 
 
+DENY = ("is generated. Change the source artifact (the step's doc, code `TASK-`-style refs or "
+        "test marker lines) instead — the RTM re-syncs automatically. Ask questions with "
+        "`rtm.py why <ID>` / `rtm.py query …`. Text outside rtm:begin/end markers in the index is editable.")
+
+
+def deny(what: str) -> None:
+    emit({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                 "permissionDecisionReason": f"RTM {what} {DENY}"}})
+
+
 def pre(inp, cfg) -> None:
     from rtmlib import render
     tool, ti = inp.get("tool_name"), inp.get("tool_input") or {}
-    if cfg.rel(ti.get("file_path", "")) != cfg.rtm:
+    rel = cfg.rel(ti.get("file_path", ""))
+    if rel and cfg.generated(rel):
+        return deny(f"section file '{rel}'")
+    if rel != cfg.rtm:
         return
     path = cfg.root / cfg.rtm
     current = path.read_text(encoding="utf-8") if path.exists() else ""
@@ -72,19 +87,14 @@ def pre(inp, cfg) -> None:
             if hit:
                 break
     if hit:
-        emit({"hookSpecificOutput": {
-            "hookEventName": "PreToolUse", "permissionDecision": "deny",
-            "permissionDecisionReason":
-                f"RTM block '{hit}' is generated. Change the source artifact (BRD/FRD, stories, "
-                f"HLD, LLD, code `TASK-` refs or test `Verifies:` lines) instead — the RTM re-syncs "
-                f"automatically. Text outside the rtm:begin/end markers is editable."}})
+        deny(f"block '{hit}'")
 
 
 def post(inp, cfg) -> None:
     from rtmlib import checks, core, state
     rel = cfg.rel((inp.get("tool_input") or {}).get("file_path", ""))
     kind = cfg.classify(rel) if rel else None
-    if not kind:
+    if kind in (None, "generated", "config"):
         return
     root = cfg.root
     if state.mark_dirty(root, rel):  # first touch this turn: remember the pre-edit state
@@ -106,6 +116,29 @@ def post(inp, cfg) -> None:
     if parts:
         emit({"hookSpecificOutput": {"hookEventName": "PostToolUse",
                                      "additionalContext": "\n".join(parts)}})
+
+
+def config_changed(root: Path) -> None:
+    """The flow itself was edited: validate, re-sync, and don't let Stop blame the change."""
+    from rtmlib import checks, core, state
+    from rtmlib.config import ConfigError, load
+    try:
+        cfg = load(root)
+    except ConfigError as e:
+        emit({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext":
+              f"rtm.config.json is invalid, RTM not synced: {e}"}})
+        return
+    res, diffs = core.sync(cfg)
+    fps = {f.fingerprint for f in res.findings}
+    state.write_set(root, "start.json", fps)  # findings caused by the flow change aren't "new"
+    new = core.new_findings(root, res.findings)
+    msg = f"RTM flow changed: {len(diffs)} file(s) re-synced ({core.describe_changes(res.changes)})."
+    if res.removed:
+        msg += f" Removed {len(res.removed)} stale section file(s)."
+    if new:
+        msg += (f" {len(new)} finding(s) are not in the baseline — review with `rtm.py check --new`; "
+                f"if the user accepts them, run `rtm.py baseline`. Verify the flow with `rtm.py selftest`.")
+    emit({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": msg}})
 
 
 def stop(inp, cfg) -> None:
@@ -143,7 +176,12 @@ def main() -> int:
         root = root_of(inp)
         if not root:
             return 0  # project has no rtm.config.json: hook is a no-op
-        from rtmlib.config import load
+        from rtmlib.config import CONFIG_NAME, load
+        fp = (inp.get("tool_input") or {}).get("file_path") or ""
+        if mode == "post" and fp and Path(fp).name == CONFIG_NAME and \
+                Path(fp).resolve().parent == root.resolve():
+            config_changed(root)
+            return 0
         cfg = load(root)
         {"pre": pre, "post": post, "stop": stop}.get(mode, lambda *_: None)(inp, cfg)
     except Exception as e:  # never break the user's tool call

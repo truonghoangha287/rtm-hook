@@ -1,79 +1,89 @@
 ---
 name: rtm
-description: Keep the Requirements Traceability Matrix (rtm.md) in sync and verified — Source → BR → FR/NFR → HLD → LLD → Code → Test, with story ACs → Test. Use when the user asks to update/sync/check the RTM or traceability, asks "what traces to X" / "why does X exist", when an RTM hook reports findings, or when a skill that produces BRs, stories, HLD, LLD, code or tests finishes and needs its links recorded.
+description: Requirements Traceability Matrix generated from the project's artifacts along a configurable flow (e.g. Source → BR → FR/NFR → Story/AC → HLD → LLD → Code → Test). Use to answer traceability questions ("what traces to BR-004", "which ACs have no test"), to update/sync/check the RTM, to act on RTM hook findings, to set up or change the traceability flow/template for a project, or when a skill producing requirements, stories, design, code or tests finishes and needs its links verified.
 ---
 
-# RTM — traceability matrix, generated and checked
+# RTM — generated, checked, flow-driven
 
-The matrix is **generated** from IDs already written in the artifacts by a deterministic script
-(`scripts/rtm.py`). You never type rows into `rtm.md`. You fix traceability **in the source
-artifact**, and the script and hooks rebuild the matrix.
+A deterministic script (`scripts/rtm.py`) reads the IDs already written in the artifacts, builds
+the trace graph along the project's **flow** (`<repo>/rtm.config.json`), writes the matrix, and
+checks it. You never type rows into the matrix. Traceability is fixed **in the source artifact**.
 
-Project wiring lives in `<repo>/rtm.config.json` (layers, files, rules, blocks); schema in
-[references/config.md](references/config.md).
+`S=.claude/skills/rtm/scripts` (run from the repo root).
 
-## Commands
+## 1. Answer questions by query (never read the matrix files)
 
-Run from the repo root (`S=.claude/skills/rtm/scripts`):
+The matrix files are large and only exist for humans to read. The graph answers directly, and the
+answer stays small:
+
+| Question | Command |
+|---|---|
+| What does X trace to, up and down? | `python3 $S/rtm.py why BR-004` (also a TASK, `STORY-5/AC2`, or a file path) |
+| Which items of a step have nothing downstream in another? | `python3 $S/rtm.py query gaps --step ac --to test` |
+| Which items break their step's rule? | `python3 $S/rtm.py query missing --step lld` |
+| Find items | `python3 $S/rtm.py query list --step hld --grep ledger` |
+| Counts | `python3 $S/rtm.py stats` |
+| What is the flow? | `python3 $S/rtm.py flow show` |
+
+All of these accept `--limit N`; the query commands also take `--json`.
+
+## 2. Keep it correct
 
 | Goal | Command |
 |---|---|
-| Rebuild generated blocks | `python3 $S/rtm.py sync` (`--diff` to preview, writes nothing) |
-| List problems | `python3 $S/rtm.py check` · `--new` (hide baseline) · `--file PATH` · `--json` |
-| Gate (CI / sign-off) | `python3 $S/rtm.py check --gate` → exit 1 on any P0/P1 |
-| Explain one item | `python3 $S/rtm.py why BR-004` (or a TASK, AC `STORY-005/AC2`, or a file path) |
-| Accept current debt | `python3 $S/rtm.py baseline` — only when the user asks |
-| Counts per layer | `python3 $S/rtm.py stats` |
+| Rebuild the generated sections | `python3 $S/rtm.py sync` (`--diff` previews and writes nothing) |
+| List problems | `python3 $S/rtm.py check --new --limit 20` (`--file PATH`, `--json`) |
+| Gate (CI / sign-off) | `python3 $S/rtm.py check --gate` exits 1 on any P0/P1 |
+| Accept current debt | `python3 $S/rtm.py baseline` (**only when the user agrees**) |
 
-Prefer `check --new --limit 20` over reading `rtm.md`. The file is large and the CLI already
-has the answer.
-
-## How to write traceable artifacts (the contract)
-
-Each layer is recognised by where its ID is defined and which IDs sit next to it:
-
-- **Table-defined** (BRD, NFR spec, HLD registries, LLD task breakdown): the ID is in the **first
-  cell** of a table row, and the upstream IDs go in the **same row** (e.g. a `Traces` column).
-  Compressed lists are fine: `FR-009/010 · CMP-005 · ADR-05/15`.
-- **Heading-defined** (FRD, stories, ADRs, sequences): the heading starts with the ID. Upstream IDs
-  go in the heading or that section's body, e.g. `### FR-006 — VoP *(traces: BR-004)*`.
-- **LLD** must cite **both** an HLD element (CMP/ADR/INT/SD) **and** a requirement (FR/NFR).
-- **Code**: the class Javadoc or `package-info.java` names its `TASK-###`.
-- **Tests**: the class Javadoc carries a `Verifies:` line naming story ACs and/or BRs:
-  ```java
-  /**
-   * TASK-014 money-path tests.
-   * Verifies: STORY-011/AC1, STORY-011/AC3, BR-008
-   */
-  ```
-- **Source of a BR**: the hand-maintained `Source → BR` table in `rtm.md` (outside the generated
-  markers).
-
-## Handling findings
-
-| Rule | Meaning | Fix (in the source artifact) |
+| Finding | Meaning | Fix (in the source artifact) |
 |---|---|---|
-| `DANGLING` P0 | cites an ID that is not defined anywhere | correct the typo, or define the ID upstream |
-| `MISSING-UPSTREAM` | the node lacks a required link (e.g. TASK without HLD, test without `Verifies:`) | add the missing ID to the row, section or Javadoc |
-| `NOT-COVERED` | BR or AC has no test yet | add a test with `Verifies:`, or leave it (progress signal) |
-| `GEN-EDITED` P1 | someone hand-edited a generated block | revert it; change the source, then `sync` |
+| `DANGLING` P0 | cites an ID that is defined nowhere | fix the typo, or define the ID upstream |
+| `MISSING-UPSTREAM` | the item breaks its step's `consumes` rule | add the missing reference to its row, section, or marker line |
+| `NOT-COVERED` | nothing downstream yet in a `coverage` target | add the downstream item, or leave it (progress signal) |
+| `GEN-EDITED` P1 | a generated block was hand-edited | change the source, then `sync` |
 
-Don't invent links to silence a finding. If no honest upstream exists, tell the user. The gap may
-be real: a missing requirement, or gold-plated code.
+Never invent a link just to silence a finding. If there is no honest upstream, tell the user: the
+gap may be real.
 
-## Hooks (installed by `install.sh`)
+## 3. How artifacts must be written (the contract)
 
-- **PreToolUse**: blocks edits inside `<!-- rtm:begin … -->` blocks of `rtm.md`.
+`rtm.py flow show` prints, for each step, what it **outputs** (ID prefix, defined in which file and
+how) and what **input** it must cite. General rules:
+
+- **table** step: the ID is in the **first cell** of a row, and its upstream IDs are in the same
+  row. Compressed lists are fine (`FR-009/010 · CMP-005`, `FR-001..013`).
+- **heading** step: the heading starts with the ID, and its upstream IDs go in the heading or the
+  section body. Children (e.g. ACs) are lines in the section matching the step's pattern, and are
+  cited as `STORY-001/AC4`.
+- **files** step (code, tests): mention the upstream IDs in the file. If the step has a `marker`
+  (e.g. `Verifies:`), only lines containing the marker count:
+  `* Verifies: STORY-011/AC1, BR-008`.
+- `rule: all` means one reference to **each** consumed step; `any` means at least one.
+
+## 4. Set up or change the flow
+
+- **New project:**
+  1. `python3 $S/rtm.py templates`, then pick the closest flow.
+  2. `python3 $S/rtm.py init --template <t> --set var=value … --title "<name>"`.
+  3. Read the repo's real artifacts and adjust `rtm.config.json` (paths, prefixes, `how`, children
+     pattern, `marker`). The schema is in [references/config.md](references/config.md).
+- **Change a flow** (add, remove or reorder steps, change inputs or outputs): edit
+  `rtm.config.json`. The hook validates it and re-syncs, and the views re-shape automatically. Then:
+  1. `python3 $S/rtm.py flow check` (doctor: files that don't exist, steps that find nothing)
+  2. `python3 $S/rtm.py selftest`: the generated contract tests for *this* flow must all pass
+  3. `python3 $S/rtm.py check --new`: show the user the new findings; `baseline` only if they accept
+- Never weaken a step's rule just to make findings disappear without the user saying so.
+
+## 5. Hooks (installed by `install.sh`)
+
+- **PreToolUse**: refuses edits to generated section files and to generated blocks in the index.
 - **PostToolUse**:
-  - after an edit to a requirements or design doc: syncs immediately and reports *new* findings
-  - after a code or test edit: marks the file dirty
-- **Stop**: if anything is dirty, syncs once, and blocks the end of the turn **only** on new P0/P1
-  introduced this session (baseline debt is ignored). Fix them, or explain to the user why
-  they're intended.
+  - step doc edited: sync, and report *new* findings
+  - code or test edited: mark the file dirty
+  - `rtm.config.json` edited: validate and re-sync. Findings caused by the flow change are not
+    blamed on later edits.
+- **Stop**: syncs once if anything is dirty. It blocks the end of the turn **only** on new P0/P1
+  findings from this session. Fix them, or explain to the user why they're intended.
 
-## For other skills
-
-A producing skill's last step should be:
-`python3 .claude/skills/rtm/scripts/rtm.py sync && python3 .claude/skills/rtm/scripts/rtm.py check --new --gate`.
-Machine consumers read `check --json` → `{pass, counts, findings[{rule, severity, subject, file,
-line, msg, fingerprint}]}`. See [references/integration.md](references/integration.md).
+Other skills: see [references/integration.md](references/integration.md).
