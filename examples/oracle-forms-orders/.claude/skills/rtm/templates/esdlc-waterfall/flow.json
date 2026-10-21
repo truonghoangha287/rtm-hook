@@ -1,0 +1,80 @@
+{
+  "schema": 2,
+  "template": {"name": "esdlc-waterfall", "version": "1.0.0",
+               "description": "Source → BR → FR/NFR → Story/AC → HLD → LLD (cites HLD + FR) → Code → Test; split matrix"},
+  "vars": {
+    "spec": "<feature spec dir, e.g. specs/001-bank-payment-system>",
+    "code": "<code module dir, e.g. payment-hub>"
+  },
+  "rtm": {
+    "index": "{spec}/01-requirements/rtm.md",
+    "dir": "{spec}/01-requirements/rtm",
+    "shard_size": 50,
+    "max_list": 6,
+    "count_only": ["code"]
+  },
+  "exclude": ["**/*-backup/**", "**/*.html", "**/worktrees/**", "**/target/**", "**/node_modules/**"],
+
+  "flow": [
+    {"step": "br", "label": "BR", "severity": "P2",
+     "produces": {"ids": ["BR"], "in": [{"files": ["{spec}/01-requirements/brd.md"], "how": "table"}]},
+     "consumes": {"attrs": ["source"]},
+     "attrs": {"source": {"from": "index", "key_col": "BR", "value_col": "Source"}}},
+
+    {"step": "req", "label": "FR/NFR", "severity": "P1",
+     "produces": {"ids": ["FR", "NFR"], "in": [
+       {"files": ["{spec}/01-requirements/frd-srs.md"], "how": "heading"},
+       {"files": ["{spec}/01-requirements/nfr-spec.md"], "how": "table"}]},
+     "consumes": {"steps": ["br"], "attrs": ["source"], "rule": "any"},
+     "attrs": {"source": {"from": "{spec}/01-requirements/nfr-spec.md", "key_col": "ID", "value_col": "Source"}}},
+
+    {"step": "story", "label": "Story", "severity": "P1",
+     "produces": {"ids": ["STORY"],
+                  "in": [{"files": ["{spec}/01a-product-backlog/user-stories-acceptance-criteria.md"], "how": "heading"}],
+                  "children": {"step": "ac", "label": "AC", "suffix": "AC",
+                               "pattern": "^\\s*[-*]\\s*\\*\\*AC(\\d+)\\b",
+                               "example": "- **AC{n} (happy):** *Given* … *when* … *then* …"}},
+     "consumes": {"steps": ["req"]}},
+
+    {"step": "hld", "label": "HLD", "severity": "P2",
+     "produces": {"ids": ["CMP", "ADR", "INT", "SD"], "in": [
+       {"files": ["{spec}/03-solution-architecture/c4-architecture-views.md",
+                  "{spec}/03-solution-architecture/integration-design.md",
+                  "{spec}/03-solution-architecture/architecture-decision-records.md"], "how": "table"},
+       {"files": ["{spec}/03-solution-architecture/architecture-decision-records.md",
+                  "{spec}/03-solution-architecture/sequence-diagrams.md"], "how": "heading"}]},
+     "consumes": {"steps": ["req", "hld"], "rule": "any", "walk": ["req"]}},
+
+    {"step": "lld", "label": "LLD", "severity": "P1",
+     "produces": {"ids": ["TASK"], "in": [{"files": ["{spec}/06a-technical-design/technical-task-breakdown.md"], "how": "table"}]},
+     "consumes": {"steps": ["hld", "req"], "rule": "all", "walk": ["req"]}},
+
+    {"step": "code", "label": "Code", "severity": "P2",
+     "produces": {"files": ["{code}/src/main/**/*.java"], "inherit_from": "package-info.java"},
+     "consumes": {"steps": ["lld"]}},
+
+    {"step": "test", "label": "Test", "severity": "P1",
+     "produces": {"files": ["{code}/src/test/**/*.java"]},
+     "consumes": {"steps": ["ac", "br"], "rule": "any", "marker": "Verifies:"}}
+  ],
+
+  "coverage": [
+    {"from": "br", "to": "test", "severity": "P3"},
+    {"from": "ac", "to": "test", "severity": "P3"}
+  ],
+
+  "status": {"initial": "Open", "req": "Specified", "story": "Planned", "hld": "In Design",
+             "lld": "Designed", "code": "Implemented", "test": "Tested"},
+
+  "views": {
+    "auto": true,
+    "add": [
+      {"id": "forward-nfr", "type": "forward", "root": "req", "prefix": "NFR",
+       "columns": ["hld", "lld", "code", "test"],
+       "title": "Forward traceability — NFR → HLD → LLD → Code → Test"}
+    ]
+  },
+
+  "stop_block_severities": ["P0", "P1"],
+  "max_messages": 5
+}

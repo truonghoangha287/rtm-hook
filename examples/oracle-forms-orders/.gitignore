@@ -1,0 +1,5 @@
+
+# rtm hook state (keep .rtm/baseline.json committed)
+.rtm/dirty
+.rtm/last.json
+.rtm/start.json
